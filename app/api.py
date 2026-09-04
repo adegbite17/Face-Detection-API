@@ -5,7 +5,7 @@ from app.schema import SubmitPayload, SubmitResponse, SvgResponse
 from app.core.logging_setup import setup_logging
 from app.core.config import settings
 from prometheus_client import Counter
-from app.services.image_processing import process_request
+from image_processing import process_request
 from app.services.cache import Cache
 import uuid
 
@@ -154,3 +154,4 @@ async def status(job_id: str):
             status_code=500,
             detail=f"Status check failed: {str(e)}"
         )
+

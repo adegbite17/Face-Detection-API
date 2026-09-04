@@ -1,39 +1,90 @@
-from xml.sax.saxutils import escape
-import random
+import math
+from typing import List, Dict, Tuple, Sequence, Union
+import numpy as np
+
+Point = Tuple[int, int]
+Contour = Union[np.ndarray, Sequence[Point]]
 
 
-def polygon_to_path(points):
+def _normalize_contour(contour: Contour) -> List[Point]:
+    """
+    Normalize an incoming contour to a list of (x, y) integer tuples.
+    Accepts OpenCV contour formats or plain sequences.
+    """
+    if isinstance(contour, np.ndarray):
+        if contour.ndim == 3 and contour.shape[1] == 1 and contour.shape[2] == 2:
+            # OpenCV format (N, 1, 2)
+            pts = contour.reshape(-1, 2)
+        elif contour.ndim == 2 and contour.shape[1] == 2:
+            pts = contour
+        else:
+            raise ValueError(f"Unsupported contour ndarray shape: {contour.shape}")
+        return [(int(x), int(y)) for x, y in pts]
+    # generic sequence
+    return [(int(p[0]), int(p[1])) for p in contour]
+
+
+def _contour_to_path_d(points: List[Point]) -> str:
+    """
+    Convert a list of points to an SVG path 'd' attribute.
+    """
     if not points:
-        return ''
-    d = 'M ' + ' L '.join(f'{x} {y}' for x, y in points) + ' Z'
-    return d
+        return ""
+    # move to first, then line to each subsequent
+    parts = [f"M{points[0][0]},{points[0][1]}"]
+    for x, y in points[1:]:
+        parts.append(f"L{x},{y}")
+    parts.append("Z")
+    return " ".join(parts)
 
 
-def random_color_for_index(i):
-    """Generate a deterministic random RGB color for each index."""
-    random.seed(i)
-    r = random.randint(50, 200)
-    g = random.randint(50, 200)
-    b = random.randint(50, 200)
-    return f'rgb({r},{g},{b})'
+def generate_svg_from_contours(
+    contours: List[Contour],
+    width: int,
+    height: int,
+    fill: str = "#ffffff",
+    stroke: str = "#000000",
+    stroke_width: int = 1
+) -> str:
+    """
+    Generate an SVG string from a list of contours.
+    Uses evenodd fill rule to support holes.
+    """
+    norm_contours: List[List[Point]] = [_normalize_contour(c) for c in contours]
 
-
-def contours_to_svg(contours, size):
-    """Convert a list of polygon contours into an SVG string."""
-    width, height = size
-    svg_parts = [
-        f'<svg xmlns="http://www.w3.org/2000/svg" '
-        f'viewBox="0 0 {width} {height}" width="{width}" height="{height}">'
-    ]
-
-    for i, contour in enumerate(contours):
-        path = polygon_to_path(contour)
-        color = random_color_for_index(i)
-        svg_parts.append(
-            f'<path d="{escape(path)}" '
-            f'fill="{color}" fill-opacity="0.18" '
-            f'stroke="{color}" stroke-dasharray="4 4" stroke-width="2" />'
+    paths = []
+    for pts in norm_contours:
+        if len(pts) < 3:
+            continue
+        d = _contour_to_path_d(pts)
+        paths.append(
+            f'<path d="{d}" fill="{fill}" stroke="{stroke}" stroke-width="{stroke_width}" fill-rule="evenodd"/>'
         )
 
-    svg_parts.append('</svg>')
-    return '\n'.join(svg_parts)
+    svg = (
+        f'<svg xmlns="http://www.w3.org/2000/svg" '
+        f'width="{width}" height="{height}" viewBox="0 0 {width} {height}">'
+        + "".join(paths)
+        + "</svg>"
+    )
+    return svg
+
+
+def contours_to_mask_contours(contours: List[Contour]) -> Dict[str, List[List[Point]]]:
+    """
+    Convert contours to API mask_contours structure:
+    { "1": [ [ (x,y), ... ], [ (x,y), ... ], ... ] }
+    All contours grouped under a single mask id "1".
+    """
+    norm_contours: List[List[Point]] = []
+    for c in contours:
+        pts = _normalize_contour(c)
+        if len(pts) >= 3:
+            norm_contours.append(pts)
+    return {"1": norm_contours}
+
+
+__all__ = [
+    "generate_svg_from_contours",
+    "contours_to_mask_contours",
+]

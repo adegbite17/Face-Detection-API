@@ -1,16 +1,15 @@
 import pytest
 import numpy as np
-import cv2
 from PIL import Image
 import base64
-from app.services.image_processing import (
+from image_processing import (
     compute_phash_from_b64,
     align_face,
     smooth_contour,
     generate_svg,
     process_request
 )
-from app.utils import pil_to_b64
+from utils1 import pil_to_b64
 
 
 @pytest.fixture

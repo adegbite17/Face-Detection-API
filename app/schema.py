@@ -22,4 +22,4 @@ class SubmitResponse(BaseModel):
 
 class SvgResponse(BaseModel):
     svg: str
-    mask_contours: Dict[str, List]
+    mask_contours: Dict[str, List[List[Tuple[int, int]]]]
