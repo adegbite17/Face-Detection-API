@@ -1,4 +1,4 @@
-# Qooves Face Processing API
+# Face Processing API
 
 An async face detection and segmentation pipeline built with FastAPI, Celery, and PostgreSQL. Accepts a frontal face image with landmarks and a segmentation map, extracts per-region contours, and returns an SVG overlay with mask coordinates.
 
